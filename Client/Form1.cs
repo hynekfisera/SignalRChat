@@ -19,11 +19,18 @@ namespace Client
 		{
 			var email = tbEmail.Text;
 			var password = tbPassword.Text;
-			string payload = JsonConvert.SerializeObject(new { email, password });
-			var content = new StringContent(payload, Encoding.UTF8, "application/json");
-			var res = await _httpClient.PostAsync($"{API_URL}/login", content);
-			string resContent = await res.Content.ReadAsStringAsync();
-			LoginResponseModel loginResponse = JsonConvert.DeserializeObject<LoginResponseModel>(resContent);
+			var client = new HttpClient();
+			var data = new MultipartFormDataContent();
+			data.Add(new StringContent(email), "email");
+			data.Add(new StringContent(password), "password");
+			var response = client.PostAsync($"{API_URL}/login", data).Result.Content
+				.ReadAsStringAsync()
+				.Result;
+			//string payload = JsonConvert.SerializeObject(new { email, password });
+			//var content = new StringContent(payload, Encoding.UTF8, "application/json");
+			//var res = await _httpClient.PostAsync($"{API_URL}/login", content);
+			//string resContent = await res.Content.ReadAsStringAsync();
+			//LoginResponseModel loginResponse = JsonConvert.DeserializeObject<LoginResponseModel>(resContent);
 			//if (loginResponse.Success)
 			//{
 			//	MessageBox.Show($"Login successful. User ID: {loginResponse.User}");
