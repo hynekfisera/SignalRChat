@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Windows.Forms;
 using ClassLibrary;
 using Client.Services;
 using Newtonsoft.Json;
@@ -13,6 +15,8 @@ namespace Client
 		private HttpClient _httpClient;
 		private User? _user;
 		private readonly ChatService _chatService;
+		private readonly byte[] AES_KEY = Encoding.ASCII.GetBytes("01234567890123456789012345678901");
+		private readonly byte[] AES_IV = Encoding.ASCII.GetBytes("0123456789012345");
 
 		public Form1()
 		{
@@ -59,12 +63,95 @@ namespace Client
 		private async void btnSend_Click(object sender, EventArgs e)
 		{
 			string content = tbMessage.Text;
-			await _chatService.SendMessage(new ClassLibrary.Message(_user, content));
+			await _chatService.SendMessage(new ClassLibrary.Message(_user, AesEncrypt(content, AES_KEY, AES_IV)));
 		}
 
 		private void OnMessageRecieved(ClassLibrary.Message message)
 		{
-			lbChat.Invoke(new Action(() => lbChat.Items.Add(message)));
+			lbChat.Invoke(new Action(() => lbChat.Items.Add($"{message.Author.Email}: {AesDecrypt(message.Content, AES_KEY, AES_IV)}")));
+		}
+
+		static byte[] AesEncrypt(string plainText, byte[] Key, byte[] IV)
+		{
+			// Check arguments.
+			if (plainText == null || plainText.Length <= 0)
+				throw new ArgumentNullException("plainText");
+			if (Key == null || Key.Length <= 0)
+				throw new ArgumentNullException("Key");
+			if (IV == null || IV.Length <= 0)
+				throw new ArgumentNullException("IV");
+			byte[] encrypted;
+
+			// Create an Aes object
+			// with the specified key and IV.
+			using (Aes aesAlg = Aes.Create())
+			{
+				aesAlg.Key = Key;
+				aesAlg.IV = IV;
+
+				// Create an encryptor to perform the stream transform.
+				ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
+
+				// Create the streams used for encryption.
+				using (MemoryStream msEncrypt = new MemoryStream())
+				{
+					using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
+					{
+						using (StreamWriter swEncrypt = new StreamWriter(csEncrypt))
+						{
+							//Write all data to the stream.
+							swEncrypt.Write(plainText);
+						}
+						encrypted = msEncrypt.ToArray();
+					}
+				}
+			}
+
+			// Return the encrypted bytes from the memory stream.
+			return encrypted;
+		}
+
+		static string AesDecrypt(byte[] cipherText, byte[] Key, byte[] IV)
+		{
+			// Check arguments.
+			if (cipherText == null || cipherText.Length <= 0)
+				throw new ArgumentNullException("cipherText");
+			if (Key == null || Key.Length <= 0)
+				throw new ArgumentNullException("Key");
+			if (IV == null || IV.Length <= 0)
+				throw new ArgumentNullException("IV");
+
+			// Declare the string used to hold
+			// the decrypted text.
+			string plaintext = null;
+
+			// Create an Aes object
+			// with the specified key and IV.
+			using (Aes aesAlg = Aes.Create())
+			{
+				aesAlg.Key = Key;
+				aesAlg.IV = IV;
+
+				// Create a decryptor to perform the stream transform.
+				ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
+
+				// Create the streams used for decryption.
+				using (MemoryStream msDecrypt = new MemoryStream(cipherText))
+				{
+					using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
+					{
+						using (StreamReader srDecrypt = new StreamReader(csDecrypt))
+						{
+
+							// Read the decrypted bytes from the decrypting stream
+							// and place them in a string.
+							plaintext = srDecrypt.ReadToEnd();
+						}
+					}
+				}
+			}
+
+			return plaintext;
 		}
 	}
 }

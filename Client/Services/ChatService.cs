@@ -19,6 +19,7 @@ namespace Client.Services
 			_connection = new HubConnectionBuilder()
 				.WithUrl(CONNECTION_URL)
 				.Build();
+
 		}
 		public void Connect()
 		{
