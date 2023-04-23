@@ -20,19 +20,19 @@ namespace Server.Controllers
 			return new JsonResult(new { Message = "Hello World!" });
 		}
 		[HttpPost("login")]
-		public JsonResult Login([FromForm] string email, [FromForm] string password)
+		public async Task<JsonResult> Login([FromForm] string email, [FromForm] string password)
 		{
-			return new JsonResult(new {Email = email, Password = password});
-			//var result = await _signInManager.PasswordSignInAsync(email, password, true, false);
-			//if (result.Succeeded)
-			//{
-			//	//var user = await _userManager.GetUserAsync(User);
-			//	return new JsonResult(new { Success = true });
-			//}
-			//else
-			//{
-			//	return new JsonResult(new { Success = false });
-			//}
+			//return new JsonResult(new {Email = email, Password = password});
+			var result = await _signInManager.PasswordSignInAsync(email, password, true, false);
+			if (result.Succeeded)
+			{
+				var user = await _signInManager.UserManager.FindByEmailAsync(email);
+				return new JsonResult(new { Success = true, User = user.Id });
+			}
+			else
+			{
+				return new JsonResult(new { Success = false });
+			}
 		}
 	}
 }

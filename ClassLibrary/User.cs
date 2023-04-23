@@ -10,5 +10,10 @@ namespace ClassLibrary
 	{
         public Guid UserId { get; set; }
 		public string? Email { get; set; }
+        public User(Guid userId, string email)
+        {
+            UserId = userId;
+            Email = email;
+        }
     }
 }
