@@ -9,5 +9,9 @@
             Author = author;
 			Content = content;            
         }
-    }
+		public override string ToString()
+		{
+			return $"{Author.Email}: {Content}";
+		}
+	}
 }

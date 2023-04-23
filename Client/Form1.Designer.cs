@@ -92,6 +92,7 @@
 			btnSend.TabIndex = 5;
 			btnSend.Text = "Odeslat";
 			btnSend.UseVisualStyleBackColor = true;
+			btnSend.Click += btnSend_Click;
 			// 
 			// Form1
 			// 

@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Text;
 using System.Text.Json.Serialization;
 using ClassLibrary;
+using Client.Services;
 using Newtonsoft.Json;
 
 namespace Client
@@ -11,11 +12,15 @@ namespace Client
 		readonly string API_URL = "https://localhost:7072/api";
 		private HttpClient _httpClient;
 		private User? _user;
-		
+		private readonly ChatService _chatService;
+
 		public Form1()
 		{
 			InitializeComponent();
 			_httpClient = new HttpClient();
+			_chatService = new ChatService();
+			_chatService.OnMessageReceived += OnMessageRecieved;
+			_chatService.Connect();
 		}
 
 		private async void btnLogin_Click(object sender, EventArgs e)
@@ -47,8 +52,19 @@ namespace Client
 		}
 		public class LoginResponseModel
 		{
-            public bool Success { get; set; }
-            public string? User { get; set; }
-        }
+			public bool Success { get; set; }
+			public string? User { get; set; }
+		}
+
+		private async void btnSend_Click(object sender, EventArgs e)
+		{
+			string content = tbMessage.Text;
+			await _chatService.SendMessage(new ClassLibrary.Message(_user, content));
+		}
+
+		private void OnMessageRecieved(ClassLibrary.Message message)
+		{
+			lbChat.Invoke(new Action(() => lbChat.Items.Add(message)));
+		}
 	}
 }
