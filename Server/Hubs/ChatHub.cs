@@ -1,5 +1,6 @@
 ﻿using ClassLibrary;
 using Microsoft.AspNetCore.SignalR;
+using System.Security.Cryptography;
 
 namespace Server.Hubs
 {
@@ -12,8 +13,8 @@ namespace Server.Hubs
 
 		public async Task Login(User user)
 		{
-			// we would send our public key here
-			await Clients.Others.SendAsync("RequestKeys");
+			byte[] key = user.rsaPublicKey;
+			await Clients.Others.SendAsync("RequestKeys", key);
 		}
 
 		public async Task SendKeys(byte[] key, byte[] iv)

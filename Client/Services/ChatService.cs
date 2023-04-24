@@ -6,6 +6,8 @@ using System.Text;
 using System.Threading.Tasks;
 using ClassLibrary;
 using System.Windows.Forms;
+using System.Security.Cryptography;
+using System.Diagnostics;
 
 namespace Client.Services
 {
@@ -13,7 +15,7 @@ namespace Client.Services
 	{
 		public delegate void MessageReceivedHandler(ClassLibrary.Message message);
 		public event MessageReceivedHandler? OnMessageReceived;
-		public delegate void KeysRequestedHandler();
+		public delegate void KeysRequestedHandler(byte[] key);
 		public event KeysRequestedHandler? OnKeysRequested;
 		public delegate void KeysReceivedHandler(byte[] key, byte[] iv);
 		public event KeysReceivedHandler? OnKeysReceived;
@@ -33,9 +35,9 @@ namespace Client.Services
 				{
 					OnMessageReceived.Invoke(message);
 				});
-				_connection.On("RequestKeys", () =>
+				_connection.On<byte[]>("RequestKeys", (byte[] key) =>
 				{
-					OnKeysRequested.Invoke();
+					OnKeysRequested.Invoke(key);
 				});
 				_connection.On<byte[], byte[]>("ReceiveKeys", (key, iv) =>
 				{

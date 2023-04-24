@@ -11,12 +11,13 @@ namespace Client
 {
 	public partial class Form1 : Form
 	{
-		readonly string API_URL = "https://localhost:7072/api";
+		readonly string API_URL = "http://localhost:5014/api";
 		private HttpClient _httpClient;
 		private User? _user;
 		private readonly ChatService _chatService;
 		private byte[] AES_KEY;
 		private byte[] AES_IV;
+		private RSAParameters RSAKeyInfo;
 
 		public Form1()
 		{
@@ -31,6 +32,10 @@ namespace Client
 			{
 				AES_KEY = aes.Key;
 				AES_IV = aes.IV;
+			}
+			using (RSA rsa = RSA.Create())
+			{
+				RSAKeyInfo = rsa.ExportParameters(true);
 			}
 		}
 
@@ -48,13 +53,18 @@ namespace Client
 			if (loginResponse.Success)
 			{
 				MessageBox.Show($"Login successful. User ID: {loginResponse.User}");
-				_user = new User(Guid.Parse(loginResponse.User), email);
+				using (RSA rsa = RSA.Create())
+				{
+					rsa.ImportParameters(RSAKeyInfo);
+					var publicKey = rsa.ExportRSAPublicKey();
+					_user = new User(Guid.Parse(loginResponse.User), email, publicKey);
+					await _chatService.Login(_user);
+				}
 				tbEmail.Enabled = false;
 				tbPassword.Enabled = false;
 				btnLogin.Enabled = false;
 				tbMessage.Enabled = true;
 				btnSend.Enabled = true;
-				await _chatService.Login(_user);
 			}
 			else
 			{
@@ -78,15 +88,22 @@ namespace Client
 			lbChat.Invoke(new Action(() => lbChat.Items.Add($"{message.Author.Email}: {AesDecrypt(message.Content, AES_KEY, AES_IV)}")));
 		}
 
-		private async void OnKeysRequested()
+		private async void OnKeysRequested(byte[] publicKey)
 		{
-			await _chatService.SendKeys(AES_KEY, AES_IV);
+			using (RSA rsa = RSA.Create())
+			{
+				rsa.ImportRSAPublicKey(publicKey, out int _);
+				var publicRSAKeyInfo = rsa.ExportParameters(false);
+				var key = RSAEncrypt(AES_KEY, publicRSAKeyInfo, false);
+				var iv = RSAEncrypt(AES_IV, publicRSAKeyInfo, false);
+				await _chatService.SendKeys(key, iv);
+			}
 		}
 
 		private void OnKeysReceived(byte[] key, byte[] iv)
 		{
-			AES_KEY = key;
-			AES_IV = iv;
+			AES_KEY = RSADecrypt(key, RSAKeyInfo, false);
+			AES_IV = RSADecrypt(iv, RSAKeyInfo, false);
 		}
 
 		static byte[] AesEncrypt(string plainText, byte[] Key, byte[] IV)
@@ -170,6 +187,65 @@ namespace Client
 			}
 
 			return plaintext;
+		}
+
+		public static byte[] RSAEncrypt(byte[] DataToEncrypt, RSAParameters RSAKeyInfo, bool DoOAEPPadding)
+		{
+			try
+			{
+				byte[] encryptedData;
+				//Create a new instance of RSACryptoServiceProvider.
+				using (RSACryptoServiceProvider RSA = new RSACryptoServiceProvider())
+				{
+
+					//Import the RSA Key information. This only needs
+					//toinclude the public key information.
+					RSA.ImportParameters(RSAKeyInfo);
+
+					//Encrypt the passed byte array and specify OAEP padding.  
+					//OAEP padding is only available on Microsoft Windows XP or
+					//later.  
+					encryptedData = RSA.Encrypt(DataToEncrypt, DoOAEPPadding);
+				}
+				return encryptedData;
+			}
+			//Catch and display a CryptographicException  
+			//to the console.
+			catch (CryptographicException e)
+			{
+				Console.WriteLine(e.Message);
+
+				return null;
+			}
+		}
+
+		public static byte[] RSADecrypt(byte[] DataToDecrypt, RSAParameters RSAKeyInfo, bool DoOAEPPadding)
+		{
+			try
+			{
+				byte[] decryptedData;
+				//Create a new instance of RSACryptoServiceProvider.
+				using (RSACryptoServiceProvider RSA = new RSACryptoServiceProvider())
+				{
+					//Import the RSA Key information. This needs
+					//to include the private key information.
+					RSA.ImportParameters(RSAKeyInfo);
+
+					//Decrypt the passed byte array and specify OAEP padding.  
+					//OAEP padding is only available on Microsoft Windows XP or
+					//later.  
+					decryptedData = RSA.Decrypt(DataToDecrypt, DoOAEPPadding);
+				}
+				return decryptedData;
+			}
+			//Catch and display a CryptographicException  
+			//to the console.
+			catch (CryptographicException e)
+			{
+				Console.WriteLine(e.ToString());
+
+				return null;
+			}
 		}
 	}
 }
