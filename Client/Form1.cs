@@ -15,27 +15,33 @@ namespace Client
 		private HttpClient _httpClient;
 		private User? _user;
 		private readonly ChatService _chatService;
-		private readonly byte[] AES_KEY = Encoding.ASCII.GetBytes("01234567890123456789012345678901");
-		private readonly byte[] AES_IV = Encoding.ASCII.GetBytes("0123456789012345");
+		private byte[] AES_KEY;
+		private byte[] AES_IV;
 
 		public Form1()
 		{
 			InitializeComponent();
 			_httpClient = new HttpClient();
 			_chatService = new ChatService();
-			_chatService.OnMessageReceived += OnMessageRecieved;
+			_chatService.OnMessageReceived += OnMessageReceived;
+			_chatService.OnKeysRequested += OnKeysRequested;
+			_chatService.OnKeysReceived += OnKeysReceived;
 			_chatService.Connect();
+			using (Aes aes = Aes.Create())
+			{
+				AES_KEY = aes.Key;
+				AES_IV = aes.IV;
+			}
 		}
 
 		private async void btnLogin_Click(object sender, EventArgs e)
 		{
 			var email = tbEmail.Text;
 			var password = tbPassword.Text;
-			var client = new HttpClient();
 			var data = new MultipartFormDataContent();
 			data.Add(new StringContent(email), "email");
 			data.Add(new StringContent(password), "password");
-			var res = client.PostAsync($"{API_URL}/login", data).Result.Content
+			var res = _httpClient.PostAsync($"{API_URL}/login", data).Result.Content
 				.ReadAsStringAsync()
 				.Result;
 			LoginResponseModel loginResponse = JsonConvert.DeserializeObject<LoginResponseModel>(res);
@@ -48,6 +54,7 @@ namespace Client
 				btnLogin.Enabled = false;
 				tbMessage.Enabled = true;
 				btnSend.Enabled = true;
+				await _chatService.Login(_user);
 			}
 			else
 			{
@@ -66,9 +73,20 @@ namespace Client
 			await _chatService.SendMessage(new ClassLibrary.Message(_user, AesEncrypt(content, AES_KEY, AES_IV)));
 		}
 
-		private void OnMessageRecieved(ClassLibrary.Message message)
+		private void OnMessageReceived(ClassLibrary.Message message)
 		{
 			lbChat.Invoke(new Action(() => lbChat.Items.Add($"{message.Author.Email}: {AesDecrypt(message.Content, AES_KEY, AES_IV)}")));
+		}
+
+		private async void OnKeysRequested()
+		{
+			await _chatService.SendKeys(AES_KEY, AES_IV);
+		}
+
+		private void OnKeysReceived(byte[] key, byte[] iv)
+		{
+			AES_KEY = key;
+			AES_IV = iv;
 		}
 
 		static byte[] AesEncrypt(string plainText, byte[] Key, byte[] IV)
