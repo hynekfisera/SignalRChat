@@ -11,7 +11,7 @@ namespace Client
 {
 	public partial class Form1 : Form
 	{
-		readonly string API_URL = "https://localhost:7072/api";
+		readonly string API_URL = "http://localhost:5014/api";
 		private HttpClient _httpClient;
 		private User? _user;
 		private readonly ChatService _chatService;

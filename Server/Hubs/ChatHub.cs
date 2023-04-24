@@ -13,7 +13,8 @@ namespace Server.Hubs
 
 		public async Task Login(User user)
 		{
-			await Clients.Others.SendAsync("RequestKeys", user.rsaPublicKey);
+			byte[] key = user.rsaPublicKey;
+			await Clients.Others.SendAsync("RequestKeys", key);
 		}
 
 		public async Task SendKeys(byte[] key, byte[] iv)

@@ -7,13 +7,18 @@ using System.Threading.Tasks;
 
 namespace ClassLibrary
 {
+	[Serializable]
 	public class User
 	{
         public Guid UserId { get; set; }
 		public string? Email { get; set; }
         public byte[] rsaPublicKey { get; set; }
+        public User()
+        {
+            rsaPublicKey = new byte[20];
+        }
 
-		public User(Guid userId, string email, byte[] key)
+        public User(Guid userId, string email, byte[] key)
         {
             UserId = userId;
             Email = email;

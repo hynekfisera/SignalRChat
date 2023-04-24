@@ -2,6 +2,7 @@
 
 namespace ClassLibrary
 {
+	[Serializable]
 	public class Message
 	{
 		public User? Author { get; set; }
